@@ -7,7 +7,7 @@
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(to right, #000000, #ffffff);
+      background: #999999de;
       margin: 0;
       padding: 20px;
     }
@@ -71,6 +71,10 @@
       margin-top: 10px;
       font-size: 18px;
     }
+    #searchResults div:hover {
+      background-color: #007bff;
+      color: white;
+    }
 
     @media print {
       body * {
@@ -97,11 +101,15 @@
   <div class="container">
     <h2>🛒 Make a Sale</h2>
 
-    <select id="productSelect"></select>
-    <input type="number" id="saleQty" placeholder="Quantity" min="1"/>
-    <button onclick="addToCart()">Add Product by Name</button>
+    <!-- Searchable Product Input -->
+    <input type="text" id="productSearch" placeholder="Type product name..." oninput="filterProducts()"/>
+    <div id="searchResults" style="border:1px solid #ccc; max-height:150px; overflow-y:auto;"></div>
+
+    <input type="number" id="saleQty" placeholder="Quantity" min="1" value="1"/>
+    <button onclick="addToCartByName()">Add Product by Name</button>
 
     <input type="text" id="barcodeInput" placeholder="Scan or enter barcode manually">
+    <input type="number" id="barcodeQty" placeholder="Quantity" min="1" value="1"/>
     <button onclick="addToCartByBarcode()">Add Product by Barcode</button>
 
     <div id="camera-container">
@@ -158,36 +166,66 @@
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <script>
     let cart = [];
+    let products = JSON.parse(localStorage.getItem('products')) || [];
 
     function loadProducts() {
-      const products = JSON.parse(localStorage.getItem('products')) || [];
-      const select = document.getElementById('productSelect');
-      select.innerHTML = '<option disabled selected>Select Product</option>';
-      products.forEach((p, i) => {
-        select.innerHTML += `<option value="${i}">${p.name} (${p.quantity} in stock)</option>`;
+      products = JSON.parse(localStorage.getItem('products')) || [];
+    }
+
+    // Product Search
+    function filterProducts() {
+      const input = document.getElementById('productSearch').value.toLowerCase();
+      const resultsDiv = document.getElementById('searchResults');
+      resultsDiv.innerHTML = '';
+      if (!input) return;
+      products.forEach((p, index) => {
+        if (p.name.toLowerCase().includes(input)) {
+          const div = document.createElement('div');
+          div.style.padding = '5px';
+          div.style.cursor = 'pointer';
+          div.innerText = `${p.name} (${p.quantity} in stock)`;
+          div.onclick = () => {
+            document.getElementById('productSearch').value = p.name;
+            resultsDiv.innerHTML = '';
+          };
+          resultsDiv.appendChild(div);
+        }
       });
     }
 
-    function addToCart() {
-      const index = document.getElementById('productSelect').value;
+    function addToCartByName() {
+      const name = document.getElementById('productSearch').value.trim();
       const qty = parseInt(document.getElementById('saleQty').value);
-      const products = JSON.parse(localStorage.getItem('products')) || [];
-      const product = products[index];
-      if (!product || qty <= 0 || qty > product.quantity) return alert("Invalid product or quantity");
+      const product = products.find(p => p.name.toLowerCase() === name.toLowerCase());
+      if (!product) return alert("Product not found!");
+      if (qty <= 0 || qty > product.quantity) return alert("Invalid quantity");
 
-      cart.push({ name: product.name, price: product.sellingPrice, qty });
+      const existing = cart.find(i => i.name === product.name);
+      if (existing) {
+        existing.qty += qty;
+      } else {
+        cart.push({ name: product.name, price: product.sellingPrice, qty });
+      }
       updateCart();
+      document.getElementById('productSearch').value = '';
     }
 
     function addToCartByBarcode() {
       const code = document.getElementById('barcodeInput').value.trim();
-      const products = JSON.parse(localStorage.getItem('products')) || [];
+      const qty = parseInt(document.getElementById('barcodeQty').value) || 1;
       const product = products.find(p => p.barcode === code);
       if (!product) return alert("Barcode not found!");
-      const qty = 1;
-      if (product.quantity < qty) return alert("Not enough stock!");
-      cart.push({ name: product.name, price: product.sellingPrice, qty });
+      if (qty <= 0 || qty > product.quantity) return alert("Invalid quantity");
+
+      const existing = cart.find(i => i.name === product.name);
+      if (existing) {
+        existing.qty += qty;
+      } else {
+        cart.push({ name: product.name, price: product.sellingPrice, qty });
+      }
       updateCart();
+      document.getElementById('barcodeInput').value = '';
+      document.getElementById('barcodeQty').value = 1;
     }
 
     function updateCart() {
@@ -234,12 +272,9 @@
 
       document.getElementById('receipt').style.display = 'block';
 
-      const products = JSON.parse(localStorage.getItem('products')) || [];
       cart.forEach(i => {
         const index = products.findIndex(p => p.name === i.name);
-        if (index !== -1) {
-          products[index].quantity -= i.qty;
-        }
+        if (index !== -1) products[index].quantity -= i.qty;
       });
       localStorage.setItem('products', JSON.stringify(products));
 
