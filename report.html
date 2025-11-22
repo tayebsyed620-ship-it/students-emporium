@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Report - Students Emporium</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(to right, #000000, #ffffffe8); 
+      color: #333;
+    }
+    h2 {
+      text-align: center;
+      color: #000000;
+      margin-bottom: 15px;
+    }
+    .tabs {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .tabs button {
+      padding: 10px 20px;
+      margin: 0 5px;
+      border: none;
+      border-radius: 5px;
+      background: #000000;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .tabs button.active {
+      background: #000000;
+    }
+    .filters {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .filters input, .filters select {
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    th, td {
+      padding: 10px;
+      text-align: center;
+      border: 1px solid #ddd;
+    }
+    th {
+      background: #000000;
+      color: white;
+    }
+    .total-summary {
+      margin-top: 20px;
+      text-align: right;
+      font-weight: bold;
+      font-size: 16px;
+    }
+    .returns-section {
+      margin-top: 30px;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+    }
+    .returns-section h3 {
+      margin-top: 0;
+    }
+    .returns-section select, .returns-section input {
+      padding: 8px;
+      margin-right: 10px;
+    }
+    .returns-section button {
+      padding: 8px 16px;
+      background: #000000;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+    .back {
+      margin-top: 30px;
+      text-align: center;
+    }
+    .back a {
+      text-decoration: none;
+      color: #000000;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+<h2>📊 Sales & Returns Report</h2>
+
+<div class="tabs">
+  <button id="salesTab" class="active" onclick="switchTab('sales')">Sales Report</button>
+  <button id="returnsTab" onclick="switchTab('returns')">Returns Report</button>
+</div>
+
+<div class="filters">
+  <input type="date" id="fromDate">
+  <input type="date" id="toDate">
+  <select id="quickFilter" onchange="applyQuickFilter(this.value)">
+    <option value="">-- Filter --</option>
+    <option value="today">Today</option>
+    <option value="yesterday">Yesterday</option>
+    <option value="thisWeek">This Week</option>
+    <option value="thisMonth">This Month</option>
+    <option value="lastMonth">Last Month</option>
+  </select>
+  <button onclick="filterData()">🔍 Filter</button>
+</div>
+
+<table id="salesTable">
+  <thead>
+    <tr>
+      <th>Date</th>
+      <th>Product</th>
+      <th>Qty</th>
+      <th>Purchase Price</th>
+      <th>Selling Price</th>
+      <th>Profit</th>
+      <th>Discount</th>
+      <th>Grand Total</th>
+    </tr>
+  </thead>
+  <tbody id="salesBody"></tbody>
+</table>
+
+<div class="total-summary" id="summarySection"></div>
+
+<table id="returnsTable" style="display:none;">
+  <thead>
+    <tr>
+      <th>Date</th>
+      <th>Product</th>
+      <th>Returned Qty</th>
+    </tr>
+  </thead>
+  <tbody id="returnsBody"></tbody>
+</table>
+
+<div class="returns-section">
+  <h3>🔄 Return Product</h3>
+  <select id="returnProductSelect"></select>
+  <input type="number" id="returnQty" min="1" placeholder="Qty to Return">
+  <button onclick="returnProduct()">Return</button>
+</div>
+
+<div class="back">
+  <a href="home.html">← Back to Dashboard</a>
+</div>
+
+<script>
+function switchTab(tab) {
+  document.getElementById("salesTab").classList.remove("active");
+  document.getElementById("returnsTab").classList.remove("active");
+  document.getElementById("salesTable").style.display = "none";
+  document.getElementById("returnsTable").style.display = "none";
+  document.getElementById("summarySection").style.display = "none";
+
+  if (tab === "sales") {
+    document.getElementById("salesTab").classList.add("active");
+    document.getElementById("salesTable").style.display = "table";
+    document.getElementById("summarySection").style.display = "block";
+  } else {
+    document.getElementById("returnsTab").classList.add("active");
+    document.getElementById("returnsTable").style.display = "table";
+  }
+}
+
+function filterData() {
+  const from = document.getElementById("fromDate").value;
+  const to = document.getElementById("toDate").value;
+  const sales = JSON.parse(localStorage.getItem("sales")) || [];
+  const returns = JSON.parse(localStorage.getItem("returns")) || [];
+  const products = JSON.parse(localStorage.getItem("products")) || [];
+
+  let totalProfit = 0;
+  let totalGrand = 0;
+
+  const salesBody = document.getElementById("salesBody");
+  salesBody.innerHTML = "";
+
+  sales.forEach(sale => {
+    if (!from || !to || (sale.date >= from && sale.date <= to)) {
+      const totalSaleAmount = sale.items.reduce((sum, item) => sum + item.price * item.qty, 0);
+      const discount = sale.discount || 0;
+
+      sale.items.forEach(item => {
+        const product = products.find(p => p.name === item.name);
+        const purchasePrice = product ? product.purchasePrice : 0;
+
+        const itemTotal = item.price * item.qty;
+        const itemDiscountShare = (itemTotal / totalSaleAmount) * discount;
+
+        const itemProfit = (item.price - purchasePrice) * item.qty - itemDiscountShare;
+        totalProfit += itemProfit;
+
+        const grandTotalItem = itemTotal - itemDiscountShare;
+        totalGrand += grandTotalItem;
+
+        salesBody.innerHTML += `
+          <tr>
+            <td>${sale.date}</td>
+            <td>${item.name}</td>
+            <td>${item.qty}</td>
+            <td>Rs. ${purchasePrice}</td>
+            <td>Rs. ${item.price}</td>
+            <td>Rs. ${itemProfit.toFixed(2)}</td>
+            <td>Rs. ${itemDiscountShare.toFixed(2)}</td>
+            <td>Rs. ${grandTotalItem.toFixed(2)}</td>
+          </tr>
+        `;
+      });
+    }
+  });
+
+  document.getElementById("summarySection").innerHTML = `
+    🧾 <strong>Total Profit:</strong> Rs. ${totalProfit.toFixed(2)}<br>
+    💰 <strong>Total Sales:</strong> Rs. ${totalGrand.toFixed(2)}
+  `;
+
+  const returnsBody = document.getElementById("returnsBody");
+  returnsBody.innerHTML = "";
+  returns.forEach(ret => {
+    if (!from || !to || (ret.date >= from && ret.date <= to)) {
+      returnsBody.innerHTML += `
+        <tr>
+          <td>${ret.date}</td>
+          <td>${ret.name}</td>
+          <td>${ret.qty}</td>
+        </tr>
+      `;
+    }
+  });
+}
+
+
+function applyQuickFilter(option) {
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  const todayStr = `${yyyy}-${mm}-${dd}`;
+
+  let from = "", to = "";
+
+  switch (option) {
+    case "today": from = to = todayStr; break;
+    case "yesterday":
+      const yest = new Date();
+      yest.setDate(today.getDate() - 1);
+      from = to = yest.toISOString().split('T')[0];
+      break;
+    case "thisWeek":
+      const first = new Date(today.setDate(today.getDate() - today.getDay()));
+      from = first.toISOString().split('T')[0];
+      to = todayStr;
+      break;
+    case "thisMonth":
+      from = `${yyyy}-${mm}-01`;
+      to = todayStr;
+      break;
+    case "lastMonth":
+      const last = new Date(yyyy, today.getMonth() - 1, 1);
+      from = last.toISOString().split('T')[0];
+      to = new Date(yyyy, today.getMonth(), 0).toISOString().split('T')[0];
+      break;
+  }
+
+  document.getElementById("fromDate").value = from;
+  document.getElementById("toDate").value = to;
+  filterData();
+}
+
+function returnProduct() {
+  const name = document.getElementById("returnProductSelect").value;
+  let qty = parseInt(document.getElementById("returnQty").value);
+
+  if (!name || qty <= 0) return alert("Select product and quantity.");
+
+  const returns = JSON.parse(localStorage.getItem("returns")) || [];
+  returns.push({ date: new Date().toISOString().split("T")[0], name, qty });
+  localStorage.setItem("returns", JSON.stringify(returns));
+
+  const products = JSON.parse(localStorage.getItem("products")) || [];
+  const prod = products.find(p => p.name === name);
+  if (prod) prod.quantity += qty;
+  localStorage.setItem("products", JSON.stringify(products));
+
+  const sales = JSON.parse(localStorage.getItem("sales")) || [];
+  sales.forEach(sale => {
+    sale.items = sale.items.filter(i => {
+      if (i.name === name && i.qty >= qty) {
+        i.qty -= qty;
+        qty = 0;
+      }
+      return i.qty > 0;
+    });
+  });
+  localStorage.setItem("sales", JSON.stringify(sales));
+
+  populateReturnOptions();
+  filterData();
+}
+
+function populateReturnOptions() {
+  const sales = JSON.parse(localStorage.getItem("sales")) || [];
+  const map = {};
+  sales.forEach(s => s.items.forEach(i => {
+    if (!map[i.name]) map[i.name] = 0;
+    map[i.name] += i.qty;
+  }));
+
+  const select = document.getElementById("returnProductSelect");
+  select.innerHTML = "<option value=''>Select Product</option>";
+  Object.entries(map).forEach(([name, qty]) => {
+    select.innerHTML += `<option value="${name}">${name} (Sold: ${qty})</option>`;
+  });
+}
+
+window.onload = () => {
+  filterData();
+  populateReturnOptions();
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Backup Data - Students Emporium</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to right, #000000, #ffffffe8);
+      padding: 20px;
+      text-align: center;
+    }
+    h2 {
+      margin-bottom: 30px;
+    }
+    button {
+      padding: 15px 30px;
+      font-size: 16px;
+      background-color: #17a2b8;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #138496;
+    }
+    .back {
+      margin-top: 30px;
+    }
+    .back a {
+      color: #007bff;
+      text-decoration: none;
+    }
+    .back a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h2>Backup Your Product Data</h2>
+  <button onclick="downloadBackup()">Download Backup</button>
+  <div class="back">
+    <a href="home.html">← Back to Dashboard</a>
+  </div>
+
+  <script>
+    function downloadBackup() {
+      const products = JSON.parse(localStorage.getItem('products')) || [];
+      const blob = new Blob([JSON.stringify(products, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'students_emporium_backup.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>

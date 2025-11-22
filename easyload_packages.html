@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Easyload & Packages - Students Emporium</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #000000, #ffffffe8);
+      margin: 0;
+      padding: 20px;
+    }
+    h2 {
+      text-align: center;
+      color: #2c3e50;
+    }
+    .tabs {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .tabs button {
+      padding: 10px 20px;
+      margin: 5px;
+      background-color: #00796b;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .tabs button.active {
+      background-color: #004d40;
+    }
+    .section {
+      display: none;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      margin-bottom: 30px;
+    }
+    .section.active {
+      display: block;
+    }
+    input, select, button {
+      padding: 10px;
+      margin: 8px 0;
+      width: 100%;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background: #00796b;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #004d40;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: center;
+    }
+    th {
+      background: #004d40;
+      color: white;
+    }
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .filter-bar input, .filter-bar select {
+      padding: 8px;
+      border: 1px solid #aaa;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h2>📱 Easyload & Packages Manager</h2>
+
+  <div class="tabs">
+    <button class="active" onclick="switchTab('addSection')">➕ Add</button>
+    <button onclick="switchTab('sellSection')">💰 Sell</button>
+    <button onclick="switchTab('reportSection')">📊 Report</button>
+  </div>
+
+  <div id="addSection" class="section active">
+    <h3>Add Package/Easyload</h3>
+    <input type="text" id="pkgName" placeholder="Package Name (e.g. Jazz 100)" />
+    <input type="text" id="pkgCategory" placeholder="Category (Easyload / Package)" />
+    <input type="number" id="pkgPurchase" placeholder="Purchase Price" />
+    <input type="number" id="pkgSale" placeholder="Selling Price" />
+    <button onclick="addPackage()">Add Package</button>
+
+    <h4>📦 All Packages</h4>
+    <table>
+      <thead><tr><th>Name</th><th>Category</th><th>Purchase</th><th>Sale</th><th>❌</th></tr></thead>
+      <tbody id="pkgList"></tbody>
+    </table>
+  </div>
+
+  <div id="sellSection" class="section">
+    <h3>Sell Package</h3>
+    <select id="pkgSelect"></select>
+    <input type="number" id="pkgQty" placeholder="Quantity" min="1" value="1" />
+    <button onclick="sellPackage()">Sell</button>
+  </div>
+
+  <div id="reportSection" class="section">
+    <h3>Sales Report</h3>
+    <div class="filter-bar">
+      <label>From: <input type="date" id="fromDate"></label>
+      <label>To: <input type="date" id="toDate"></label>
+      <select onchange="quickFilter(this.value)">
+        <option value="">Quick Filter</option>
+        <option value="today">Today</option>
+        <option value="thisMonth">This Month</option>
+      </select>
+      <button onclick="showReport()">🔍 Filter</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Name</th>
+          <th>Qty</th>
+          <th>Purchase</th>
+          <th>Selling</th>
+          <th>Profit</th>
+        </tr>
+      </thead>
+      <tbody id="reportBody"></tbody>
+    </table>
+
+    <!-- ✅ Totals -->
+    <div id="totalSell" style="text-align:right; font-weight:bold; margin-top:10px;"></div>
+    <div id="totalProfit" style="text-align:right; font-weight:bold;"></div>
+  </div>
+
+  <script>
+    const pkgKey = 'pkgList';
+    const saleKey = 'pkgSales';
+
+    function switchTab(id) {
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      event.target.classList.add('active');
+      if (id === 'sellSection') loadPackages();
+      if (id === 'reportSection') showReport();
+      if (id === 'addSection') loadPackageTable();
+    }
+
+    function addPackage() {
+      const name = document.getElementById('pkgName').value.trim();
+      const category = document.getElementById('pkgCategory').value.trim();
+      const purchase = parseFloat(document.getElementById('pkgPurchase').value);
+      const selling = parseFloat(document.getElementById('pkgSale').value);
+
+      if (!name || !category || isNaN(purchase) || isNaN(selling)) {
+        alert("Please fill all fields correctly.");
+        return;
+      }
+
+      const list = JSON.parse(localStorage.getItem(pkgKey)) || [];
+      list.push({ name, category, purchase, selling });
+      localStorage.setItem(pkgKey, JSON.stringify(list));
+      loadPackageTable();
+      alert("Added successfully.");
+    }
+
+    function deletePackage(index) {
+      const list = JSON.parse(localStorage.getItem(pkgKey)) || [];
+      list.splice(index, 1);
+      localStorage.setItem(pkgKey, JSON.stringify(list));
+      loadPackageTable();
+      loadPackages();
+    }
+
+    function loadPackageTable() {
+      const list = JSON.parse(localStorage.getItem(pkgKey)) || [];
+      const tbody = document.getElementById('pkgList');
+      tbody.innerHTML = '';
+      list.forEach((p, i) => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${p.name}</td>
+            <td>${p.category}</td>
+            <td>Rs. ${p.purchase}</td>
+            <td>Rs. ${p.selling}</td>
+            <td><button onclick="deletePackage(${i})">❌</button></td>
+          </tr>`;
+      });
+    }
+
+    function loadPackages() {
+      const list = JSON.parse(localStorage.getItem(pkgKey)) || [];
+      const select = document.getElementById('pkgSelect');
+      select.innerHTML = '<option value="">Select</option>';
+      list.forEach((p, i) => {
+        select.innerHTML += `<option value="${i}">${p.name} - Rs. ${p.selling}</option>`;
+      });
+    }
+
+    function sellPackage() {
+      const index = document.getElementById('pkgSelect').value;
+      const qty = parseInt(document.getElementById('pkgQty').value);
+      const list = JSON.parse(localStorage.getItem(pkgKey)) || [];
+
+      if (!list[index] || qty <= 0) {
+        alert("Select valid package and quantity.");
+        return;
+      }
+
+      const pkg = list[index];
+      const date = new Date().toISOString().split('T')[0];
+      const sales = JSON.parse(localStorage.getItem(saleKey)) || [];
+      sales.push({ date, name: pkg.name, qty, purchase: pkg.purchase, selling: pkg.selling });
+      localStorage.setItem(saleKey, JSON.stringify(sales));
+
+      alert("Package sold.");
+    }
+
+    function showReport() {
+      const from = document.getElementById('fromDate').value;
+      const to = document.getElementById('toDate').value;
+      const sales = JSON.parse(localStorage.getItem(saleKey)) || [];
+      const tbody = document.getElementById('reportBody');
+      const totalProfitDiv = document.getElementById('totalProfit');
+      const totalSellDiv = document.getElementById('totalSell');
+      tbody.innerHTML = '';
+      let totalProfit = 0;
+      let totalSell = 0;
+
+      sales.forEach(s => {
+        if (!from || !to || (s.date >= from && s.date <= to)) {
+          const profit = (s.selling - s.purchase) * s.qty;
+          const sell = s.selling * s.qty;
+          totalProfit += profit;
+          totalSell += sell;
+          tbody.innerHTML += `
+            <tr>
+              <td>${s.date}</td>
+              <td>${s.name}</td>
+              <td>${s.qty}</td>
+              <td>Rs. ${(s.purchase * s.qty).toFixed(2)}</td>
+              <td>Rs. ${sell.toFixed(2)}</td>
+              <td>Rs. ${profit.toFixed(2)}</td>
+            </tr>`;
+        }
+      });
+
+      totalSellDiv.innerText = `Total Sell: Rs. ${totalSell.toFixed(2)}`;
+      totalProfitDiv.innerText = `Total Profit: Rs. ${totalProfit.toFixed(2)}`;
+    }
+
+    function quickFilter(val) {
+      const today = new Date();
+      let from, to;
+      if (val === 'today') {
+        from = to = today.toISOString().split('T')[0];
+      } else if (val === 'thisMonth') {
+        from = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-01`;
+        to = today.toISOString().split('T')[0];
+      }
+      document.getElementById('fromDate').value = from;
+      document.getElementById('toDate').value = to;
+      showReport();
+    }
+
+    window.onload = () => {
+      loadPackageTable();
+    };
+  </script>
+</body>
+</html>

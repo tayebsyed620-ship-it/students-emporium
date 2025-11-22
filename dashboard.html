@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>📊 Summary Dashboard - Students Emporium</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #000000, #ffffffe8);
+      padding: 20px;
+      color: #2c3e50;
+    }
+    h2 {
+      text-align: center;
+      color: #000000;
+      margin-bottom: 30px;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      padding: 20px;
+      text-align: center;
+      transition: 0.3s;
+    }
+    .card:hover {
+      transform: scale(1.03);
+    }
+    .card h3 {
+      margin-bottom: 10px;
+      color: #16a085;
+    }
+    .card p {
+      font-size: 24px;
+      font-weight: bold;
+    }
+    .back {
+      text-align: center;
+      margin-top: 40px;
+    }
+    .back a {
+      text-decoration: none;
+      color: #000000;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h2>📊 Summary Dashboard</h2>
+  <div class="cards">
+    <div class="card">
+      <h3>📦 Total Products</h3>
+      <p id="totalProducts">0</p>
+    </div>
+    <div class="card">
+      <h3>💰 Total Sales</h3>
+      <p id="totalSales">Rs. 0</p>
+    </div>
+    <div class="card">
+      <h3>📉 Total Returns</h3>
+      <p id="totalReturns">0 items</p>
+    </div>
+    <div class="card">
+      <h3>📈 Estimated Profit</h3>
+      <p id="totalProfit">Rs. 0</p>
+    </div>
+    <div class="card">
+      <h3>📱 Easyload Sold</h3>
+      <p id="easyloadTotal">Rs. 0</p>
+    </div>
+  </div>
+  <div class="back">
+    <a href="home.html">← Back to Dashboard</a>
+  </div>
+
+  <script>
+    function loadSummary() {
+      try {
+        const products = JSON.parse(localStorage.getItem('products')) || [];
+        const sales = JSON.parse(localStorage.getItem('sales')) || [];
+        const returns = JSON.parse(localStorage.getItem('returns')) || [];
+        const packages = JSON.parse(localStorage.getItem('packageSales')) || [];
+
+        document.getElementById('totalProducts').innerText = products.length;
+
+        let totalSalesAmount = 0;
+        let profit = 0;
+        sales.forEach(sale => {
+          totalSalesAmount += sale.grandTotal || 0;
+          sale.items.forEach(item => {
+            const product = products.find(p => p.name === item.name);
+            const cost = product ? product.purchasePrice : 0;
+            profit += (item.price - cost) * item.qty;
+          });
+        });
+        document.getElementById('totalSales').innerText = "Rs. " + totalSalesAmount.toFixed(2);
+        document.getElementById('totalProfit').innerText = "Rs. " + profit.toFixed(2);
+
+        const returnQty = returns.reduce((sum, r) => sum + r.qty, 0);
+        document.getElementById('totalReturns').innerText = `${returnQty} items`;
+
+        const easyloadAmount = packages.reduce((sum, p) => sum + p.amount, 0);
+        document.getElementById('easyloadTotal').innerText = "Rs. " + easyloadAmount.toFixed(2);
+      } catch (e) {
+        alert("Something went wrong in loading data.");
+        console.error(e);
+      }
+    }
+
+    window.onload = loadSummary;
+  </script>
+</body>
+</html>

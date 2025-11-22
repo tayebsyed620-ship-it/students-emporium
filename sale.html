@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Make Sale - Students Emporium</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #000000, #ffffff);
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 900px;
+      margin: auto;
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+      color: #007bff;
+    }
+    select, input, button {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+    }
+    .actions button {
+      background: #dc3545;
+      margin: 0;
+      padding: 5px 10px;
+      font-size: 14px;
+    }
+    #camera-container {
+      margin: 10px 0;
+      text-align: center;
+    }
+    #reader {
+      width: 100%;
+      max-width: 400px;
+      margin: auto;
+      display: none;
+    }
+    .total-section {
+      text-align: right;
+      margin-top: 10px;
+      font-size: 18px;
+    }
+
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #receipt, #receipt * {
+        visibility: visible;
+      }
+      #receipt {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        padding: 20px;
+        background: white;
+      }
+      #receipt button {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>🛒 Make a Sale</h2>
+
+    <select id="productSelect"></select>
+    <input type="number" id="saleQty" placeholder="Quantity" min="1"/>
+    <button onclick="addToCart()">Add Product by Name</button>
+
+    <input type="text" id="barcodeInput" placeholder="Scan or enter barcode manually">
+    <button onclick="addToCartByBarcode()">Add Product by Barcode</button>
+
+    <div id="camera-container">
+      <button onclick="toggleScanner()">📷 Toggle Camera Scanner</button>
+      <div id="reader"></div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Qty</th>
+          <th>Price</th>
+          <th>Total</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="cartBody"></tbody>
+    </table>
+
+    <input type="number" id="discount" placeholder="Discount (Rs)" value="0" min="0"/>
+    <div class="total-section">
+      Grand Total: Rs. <span id="grandTotal">0</span>
+    </div>
+
+    <button onclick="generateBill()">Generate Bill</button>
+  </div>
+
+  <div id="receipt" style="display:none;">
+    <h2 style="text-align:center;">Students Emporium</h2>
+    <p style="text-align:center;">Software by Tayeb Sayed</p>
+    <p><strong>Date:</strong> <span id="receiptDate"></span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Qty</th>
+          <th>Price</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody id="receiptTableBody"></tbody>
+    </table>
+    <p><strong>Total:</strong> Rs. <span id="receiptTotal"></span></p>
+    <p><strong>Discount:</strong> Rs. <span id="receiptDiscount"></span></p>
+    <p><strong>Grand Total:</strong> Rs. <span id="receiptGrand"></span></p>
+    <p style="text-align:center;">📍 janazgah adda, manglor swat | 📞 0346-9458609</p>
+    <p style="text-align:center; font-style: italic;">🙏 Thank you for shopping!</p>
+    <div style="text-align:center;">
+      <button onclick="window.print()">🖨️ Print Bill</button>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <script>
+    let cart = [];
+
+    function loadProducts() {
+      const products = JSON.parse(localStorage.getItem('products')) || [];
+      const select = document.getElementById('productSelect');
+      select.innerHTML = '<option disabled selected>Select Product</option>';
+      products.forEach((p, i) => {
+        select.innerHTML += `<option value="${i}">${p.name} (${p.quantity} in stock)</option>`;
+      });
+    }
+
+    function addToCart() {
+      const index = document.getElementById('productSelect').value;
+      const qty = parseInt(document.getElementById('saleQty').value);
+      const products = JSON.parse(localStorage.getItem('products')) || [];
+      const product = products[index];
+      if (!product || qty <= 0 || qty > product.quantity) return alert("Invalid product or quantity");
+
+      cart.push({ name: product.name, price: product.sellingPrice, qty });
+      updateCart();
+    }
+
+    function addToCartByBarcode() {
+      const code = document.getElementById('barcodeInput').value.trim();
+      const products = JSON.parse(localStorage.getItem('products')) || [];
+      const product = products.find(p => p.barcode === code);
+      if (!product) return alert("Barcode not found!");
+      const qty = 1;
+      if (product.quantity < qty) return alert("Not enough stock!");
+      cart.push({ name: product.name, price: product.sellingPrice, qty });
+      updateCart();
+    }
+
+    function updateCart() {
+      const tbody = document.getElementById('cartBody');
+      tbody.innerHTML = '';
+      let total = 0;
+      cart.forEach((item, index) => {
+        const itemTotal = item.price * item.qty;
+        total += itemTotal;
+        tbody.innerHTML += `
+          <tr>
+            <td>${item.name}</td>
+            <td>${item.qty}</td>
+            <td>Rs. ${item.price}</td>
+            <td>Rs. ${itemTotal}</td>
+            <td class="actions"><button onclick="removeItem(${index})">❌</button></td>
+          </tr>`;
+      });
+      document.getElementById('grandTotal').innerText = total;
+    }
+
+    function removeItem(index) {
+      cart.splice(index, 1);
+      updateCart();
+    }
+
+    function generateBill() {
+      const discount = parseFloat(document.getElementById('discount').value) || 0;
+      const date = new Date();
+      let total = 0;
+      cart.forEach(i => total += i.price * i.qty);
+      const grand = total - discount;
+
+      document.getElementById('receiptDate').innerText = date.toLocaleString();
+      document.getElementById('receiptTotal').innerText = total.toFixed(2);
+      document.getElementById('receiptDiscount').innerText = discount.toFixed(2);
+      document.getElementById('receiptGrand').innerText = grand.toFixed(2);
+
+      const tbody = document.getElementById('receiptTableBody');
+      tbody.innerHTML = '';
+      cart.forEach(i => {
+        tbody.innerHTML += `<tr><td>${i.name}</td><td>${i.qty}</td><td>${i.price}</td><td>${(i.price * i.qty).toFixed(2)}</td></tr>`;
+      });
+
+      document.getElementById('receipt').style.display = 'block';
+
+      const products = JSON.parse(localStorage.getItem('products')) || [];
+      cart.forEach(i => {
+        const index = products.findIndex(p => p.name === i.name);
+        if (index !== -1) {
+          products[index].quantity -= i.qty;
+        }
+      });
+      localStorage.setItem('products', JSON.stringify(products));
+
+      const sales = JSON.parse(localStorage.getItem('sales')) || [];
+      sales.push({ date: date.toISOString().split('T')[0], items: [...cart], total, discount, grandTotal: grand });
+      localStorage.setItem('sales', JSON.stringify(sales));
+
+      cart = [];
+      updateCart();
+      loadProducts();
+    }
+
+    let html5QrCode;
+    function toggleScanner() {
+      const reader = document.getElementById("reader");
+      if (reader.style.display === "none") {
+        reader.style.display = "block";
+        html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: 250 },
+          code => {
+            document.getElementById('barcodeInput').value = code;
+            addToCartByBarcode();
+            html5QrCode.stop();
+            reader.style.display = "none";
+          }
+        );
+      } else {
+        html5QrCode.stop();
+        reader.style.display = "none";
+      }
+    }
+
+    window.onload = loadProducts;
+  </script>
+</body>
+</html>

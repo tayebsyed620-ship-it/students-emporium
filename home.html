@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Students Emporium - Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background:   hsla(240, 1%, 64%, 0.948);
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #000000;
+    }
+    .menu {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+    }
+    .menu button {
+      padding: 20px;
+      font-size: 16px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .menu button:hover {
+      background-color: #0056b3;
+    }
+    .logout {
+      margin-top: 30px;
+      text-align: center;
+    }
+    .logout button {
+      padding: 10px 20px;
+      background-color: #000000;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .logout button:hover {
+      background-color: #bd2130;
+    }
+    .branding {
+      text-align: center;
+      margin-top: 40px;
+      color: #333;
+      font-size: 18px;
+    }
+    .branding img.profile {
+      width: 200px;
+      height: 200px;
+      object-fit: cover;
+      border-radius: 50%;
+      margin-bottom: 10px;
+      border: 3px solid #007bff;
+    }
+  </style>
+</head>
+<body>
+  <h1>Students Emporium - Dashboard</h1>
+  <div class="menu">
+    <button onclick="location.href='add.html'">➕ Add Product</button>
+    <button onclick="location.href='sale.html'">🛒 Make Sale</button>
+    <button onclick="location.href='report.html'">📊 View Reports</button>
+    <button onclick="location.href='stock.html'">📦 Stock Overview</button>
+    <button onclick="location.href='backup.html'">💾 Backup Data</button>
+    <button onclick="location.href='easyload_packages.html'">📱 Easyload & Packages</button>
+    <button onclick="location.href='dashboard.html'">📊 Summary Dashboard</button>
+  </div>
+
+  <div class="branding">
+    <img src="tayeb.jpg" alt="Tayeb Sayed" class="profile"/>
+    <p>Software designed by <strong>Tayeb Sayed</strong></p>
+  </div>
+
+  <div class="logout">
+    <button onclick="logout()">🚪 Logout</button>
+  </div>
+
+  <script>
+    function logout() {
+      localStorage.removeItem("loggedIn");
+      window.location.href = "index.html";
+    }
+  </script>
+</body>
+</html>
